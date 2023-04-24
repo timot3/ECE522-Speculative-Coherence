@@ -534,7 +534,7 @@
                         "maxStackSize": 67108864, 
                         "ppid": 0, 
                         "type": "Process", 
-                        "cwd": "/home/xuchen/newpim/PIMSim/GEM5Simulation/gem5", 
+                        "cwd": "/PIMSim/GEM5Simulation/gem5", 
                         "pgid": 100, 
                         "simpoint": 0, 
                         "euid": 100, 
