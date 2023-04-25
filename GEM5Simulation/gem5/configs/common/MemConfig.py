@@ -290,7 +290,7 @@ def config_mem(options, system):
 
 	    # memory contains kernels
         if pim_type != "cpu" and num_kernels > 0:
-            pim_kernerls = []
+            pim_kernels = []
 	
             print ("Creating PIM kernels...")
             for pid in range(num_kernels):
@@ -321,8 +321,8 @@ def config_mem(options, system):
 		if options.mem_type.startswith("HMC"):
         	    _kernel.port = system.membus.slave
             	    _kernel.mem_port = system.membus.master
-                pim_kernerls.append(_kernel)
-            system.pim_kernerls = pim_kernerls
+                pim_kernels.append(_kernel)
+            system.pim_kernels = pim_kernels
 
 	# memory contains processors
 

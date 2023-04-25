@@ -14,7 +14,7 @@ subgraph cluster_system {
 fontname=Arial;
 color="#000000";
 style="rounded, filled";
-tooltip="boot_osflags&#61;a&#10;cache_line_size&#61;64&#10;clk_domain&#61;system.clk_domain&#10;default_p_state&#61;UNDEFINED&#10;eventq_index&#61;0&#10;exit_on_work_items&#61;false&#10;init_param&#61;0&#10;kernel&#61;&#10;kernel_addr_check&#61;true&#10;kernel_extras&#61;&#10;kvm_vm&#61;Null&#10;load_addr_mask&#61;18446744073709551615&#10;load_offset&#61;0&#10;mem_mode&#61;timing&#10;mem_ranges&#61;0:536870911:0:0:0:0&#10;memories&#61;system.mem_ctrls&#10;mmap_using_noreserve&#61;false&#10;multi_thread&#61;false&#10;num_work_ids&#61;16&#10;p_state_clk_gate_bins&#61;20&#10;p_state_clk_gate_max&#61;1000000000000&#10;p_state_clk_gate_min&#61;1000&#10;pim_kernerls&#61;system.pim_kernerls&#10;pim_type&#61;kernel&#10;power_model&#61;&#10;readfile&#61;&#10;symbolfile&#61;&#10;thermal_components&#61;&#10;thermal_model&#61;Null&#10;work_begin_ckpt_count&#61;0&#10;work_begin_cpu_id_exit&#61;-1&#10;work_begin_exit_count&#61;0&#10;work_cpus_ckpt_count&#61;0&#10;work_end_ckpt_count&#61;0&#10;work_end_exit_count&#61;0&#10;work_item_id&#61;-1";
+tooltip="boot_osflags&#61;a&#10;cache_line_size&#61;64&#10;clk_domain&#61;system.clk_domain&#10;default_p_state&#61;UNDEFINED&#10;eventq_index&#61;0&#10;exit_on_work_items&#61;false&#10;init_param&#61;0&#10;kernel&#61;&#10;kernel_addr_check&#61;true&#10;kernel_extras&#61;&#10;kvm_vm&#61;Null&#10;load_addr_mask&#61;18446744073709551615&#10;load_offset&#61;0&#10;mem_mode&#61;timing&#10;mem_ranges&#61;0:536870911:0:0:0:0&#10;memories&#61;system.mem_ctrls&#10;mmap_using_noreserve&#61;false&#10;multi_thread&#61;false&#10;num_work_ids&#61;16&#10;p_state_clk_gate_bins&#61;20&#10;p_state_clk_gate_max&#61;1000000000000&#10;p_state_clk_gate_min&#61;1000&#10;pim_kernels&#61;system.pim_kernels&#10;pim_type&#61;kernel&#10;power_model&#61;&#10;readfile&#61;&#10;symbolfile&#61;&#10;thermal_components&#61;&#10;thermal_model&#61;Null&#10;work_begin_ckpt_count&#61;0&#10;work_begin_cpu_id_exit&#61;-1&#10;work_begin_exit_count&#61;0&#10;work_cpus_ckpt_count&#61;0&#10;work_end_ckpt_count&#61;0&#10;work_end_exit_count&#61;0&#10;work_item_id&#61;-1";
 label="system \n: System";
 shape=Mrecord;
 fontsize=14;
@@ -511,29 +511,29 @@ fontcolor="#000000";
 
 }
 
-subgraph cluster_system_pim_kernerls {
+subgraph cluster_system_pim_kernels {
 fontname=Arial;
 color="#000000";
 style="rounded, filled";
-tooltip="addr_base&#61;536870912&#10;addr_ranges&#61;536870912:536870912:0:0:0:0&#10;clk_domain&#61;system.pim_kernerls.clk_domain&#10;default_p_state&#61;UNDEFINED&#10;eventq_index&#61;0&#10;id&#61;0&#10;input&#61;2&#10;latency&#61;1000&#10;output&#61;1&#10;p_state_clk_gate_bins&#61;20&#10;p_state_clk_gate_max&#61;1000000000000&#10;p_state_clk_gate_min&#61;1000&#10;power_model&#61;";
-label="pim_kernerls \n: PIMAdder";
+tooltip="addr_base&#61;536870912&#10;addr_ranges&#61;536870912:536870912:0:0:0:0&#10;clk_domain&#61;system.pim_kernels.clk_domain&#10;default_p_state&#61;UNDEFINED&#10;eventq_index&#61;0&#10;id&#61;0&#10;input&#61;2&#10;latency&#61;1000&#10;output&#61;1&#10;p_state_clk_gate_bins&#61;20&#10;p_state_clk_gate_max&#61;1000000000000&#10;p_state_clk_gate_min&#61;1000&#10;power_model&#61;";
+label="pim_kernels \n: PIMAdder";
 shape=Mrecord;
 fontsize=14;
 fillcolor="#bab6ae";
 fontcolor="#000000";
-system_pim_kernerls_port [fontname=Arial, color="#000000", style="rounded, filled", label=port, shape=Mrecord, fontsize=14, fillcolor="#94918b", fontcolor="#000000"];
-system_pim_kernerls_mem_port [fontname=Arial, color="#000000", style="rounded, filled", label=mem_port, shape=Mrecord, fontsize=14, fillcolor="#94918b", fontcolor="#000000"];
-subgraph cluster_system_pim_kernerls_clk_domain {
+system_pim_kernels_port [fontname=Arial, color="#000000", style="rounded, filled", label=port, shape=Mrecord, fontsize=14, fillcolor="#94918b", fontcolor="#000000"];
+system_pim_kernels_mem_port [fontname=Arial, color="#000000", style="rounded, filled", label=mem_port, shape=Mrecord, fontsize=14, fillcolor="#94918b", fontcolor="#000000"];
+subgraph cluster_system_pim_kernels_clk_domain {
 fontname=Arial;
 color="#000000";
 style="rounded, filled";
-tooltip="clock&#61;1000&#10;domain_id&#61;-1&#10;eventq_index&#61;0&#10;init_perf_level&#61;0&#10;voltage_domain&#61;system.pim_kernerls.clk_domain.voltage_domain";
+tooltip="clock&#61;1000&#10;domain_id&#61;-1&#10;eventq_index&#61;0&#10;init_perf_level&#61;0&#10;voltage_domain&#61;system.pim_kernels.clk_domain.voltage_domain";
 label="clk_domain \n: SrcClockDomain";
 shape=Mrecord;
 fontsize=14;
 fillcolor="#9f9c95";
 fontcolor="#000000";
-subgraph cluster_system_pim_kernerls_clk_domain_voltage_domain {
+subgraph cluster_system_pim_kernels_clk_domain_voltage_domain {
 fontname=Arial;
 color="#000000";
 style="rounded, filled";
@@ -554,7 +554,7 @@ fontcolor="#000000";
 }
 
 system_system_port -> system_membus_slave;
-system_membus_master -> system_pim_kernerls_mem_port;
+system_membus_master -> system_pim_kernels_mem_port;
 system_membus_master -> system_mem_ctrls_port;
 system_membus_master -> system_cpu_interrupts_pio;
 system_membus_master -> system_cpu_interrupts_int_slave;
@@ -569,5 +569,5 @@ system_cpu_itb_walker_cache_mem_side -> system_tol2bus_slave;
 system_cpu_itb_walker_port -> system_cpu_itb_walker_cache_cpu_side;
 system_cpu_dtb_walker_cache_mem_side -> system_tol2bus_slave;
 system_cpu_dcache_mem_side -> system_tol2bus_slave;
-system_pim_kernerls_port -> system_membus_slave;
+system_pim_kernels_port -> system_membus_slave;
 }

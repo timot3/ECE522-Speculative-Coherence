@@ -203,7 +203,7 @@ System::System(Params *p)
 
     // @PIM 
     // init all PIM kernels/processors
-    for (const auto &pim_name : p->pim_kernerls) {
+    for (const auto &pim_name : p->pim_kernels) {
 	pim_kernels.push_back(pim_name);
     }
 

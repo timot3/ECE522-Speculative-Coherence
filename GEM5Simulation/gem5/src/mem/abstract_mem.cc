@@ -57,10 +57,10 @@
 
 using namespace std;
 
-AbstractMemory::AbstractMemory(const Params *p) :
+AbstractMemory::AbstractMemory(const Params* p):
     MemObject(p), range(params()->range), pmemAddr(NULL),
     confTableReported(p->conf_table_reported), inAddrMap(p->in_addr_map),
-    kvmMap(p->kvm_map), _system(NULL),cpu_type(p->cpu_type),coherence_granularity(p->coherence_granularity)
+    kvmMap(p->kvm_map), _system(NULL), cpu_type(p->cpu_type), coherence_granularity(p->coherence_granularity)
 {
 
 }
@@ -201,7 +201,7 @@ AbstractMemory::getAddrRange() const
 void
 AbstractMemory::trackLoadLocked(PacketPtr pkt)
 {
-    const RequestPtr &req = pkt->req;
+    const RequestPtr& req = pkt->req;
     Addr paddr = LockedAddr::mask(req->getPaddr());
 
     // first we check if we already have a locked addr for this
@@ -212,7 +212,7 @@ AbstractMemory::trackLoadLocked(PacketPtr pkt)
     for (i = lockedAddrList.begin(); i != lockedAddrList.end(); ++i) {
         if (i->matchesContext(req)) {
             DPRINTF(LLSC, "Modifying lock record: context %d addr %#x\n",
-                    req->contextId(), paddr);
+                req->contextId(), paddr);
             i->addr = paddr;
             return;
         }
@@ -220,7 +220,7 @@ AbstractMemory::trackLoadLocked(PacketPtr pkt)
 
     // no record for this xc: need to allocate a new one
     DPRINTF(LLSC, "Adding lock record: context %d addr %#x\n",
-            req->contextId(), paddr);
+        req->contextId(), paddr);
     lockedAddrList.push_front(LockedAddr(req));
 }
 
@@ -232,7 +232,7 @@ AbstractMemory::trackLoadLocked(PacketPtr pkt)
 bool
 AbstractMemory::checkLockedAddrList(PacketPtr pkt)
 {
-    const RequestPtr &req = pkt->req;
+    const RequestPtr& req = pkt->req;
     Addr paddr = LockedAddr::mask(req->getPaddr());
     bool isLLSC = pkt->isLLSC();
 
@@ -254,7 +254,7 @@ AbstractMemory::checkLockedAddrList(PacketPtr pkt)
                 // it's a store conditional, and as far as the memory system can
                 // tell, the requesting context's lock is still valid.
                 DPRINTF(LLSC, "StCond success: context %d addr %#x\n",
-                        req->contextId(), paddr);
+                    req->contextId(), paddr);
                 allowStore = true;
                 break;
             }
@@ -274,7 +274,7 @@ AbstractMemory::checkLockedAddrList(PacketPtr pkt)
         while (i != lockedAddrList.end()) {
             if (i->addr == paddr) {
                 DPRINTF(LLSC, "Erasing lock record: context %d addr %#x\n",
-                        i->contextId, paddr);
+                    i->contextId, paddr);
                 ContextID owner_cid = i->contextId;
                 ContextID requester_cid = pkt->req->contextId();
                 if (owner_cid != requester_cid) {
@@ -282,7 +282,8 @@ AbstractMemory::checkLockedAddrList(PacketPtr pkt)
                     TheISA::globalClearExclusive(ctx);
                 }
                 i = lockedAddrList.erase(i);
-            } else {
+            }
+            else {
                 i++;
             }
         }
@@ -292,21 +293,21 @@ AbstractMemory::checkLockedAddrList(PacketPtr pkt)
 }
 
 static inline void
-tracePacket(System *sys, const char *label, PacketPtr pkt)
+tracePacket(System* sys, const char* label, PacketPtr pkt)
 {
     int size = pkt->getSize();
 #if THE_ISA != NULL_ISA
     if (size == 1 || size == 2 || size == 4 || size == 8) {
-        DPRINTF(MemoryAccess,"%s from %s of size %i on address %#x data "
-                "%#x %c\n", label, sys->getMasterName(pkt->req->masterId()),
-                size, pkt->getAddr(), pkt->getUintX(TheISA::GuestByteOrder),
-                pkt->req->isUncacheable() ? 'U' : 'C');
+        DPRINTF(MemoryAccess, "%s from %s of size %i on address %#x data "
+            "%#x %c\n", label, sys->getMasterName(pkt->req->masterId()),
+            size, pkt->getAddr(), pkt->getUintX(TheISA::GuestByteOrder),
+            pkt->req->isUncacheable() ? 'U' : 'C');
         return;
     }
 #endif
     DPRINTF(MemoryAccess, "%s from %s of size %i on address %#x %c\n",
-            label, sys->getMasterName(pkt->req->masterId()),
-            size, pkt->getAddr(), pkt->req->isUncacheable() ? 'U' : 'C');
+        label, sys->getMasterName(pkt->req->masterId()),
+        size, pkt->getAddr(), pkt->req->isUncacheable() ? 'U' : 'C');
     DDUMP(MemoryAccess, pkt->getConstPtr<uint8_t>(), pkt->getSize());
 }
 
@@ -321,20 +322,20 @@ AbstractMemory::access(PacketPtr pkt)
 {
     if (pkt->cacheResponding()) {
         DPRINTF(MemoryAccess, "Cache responding to %#llx: not responding\n",
-                pkt->getAddr());
+            pkt->getAddr());
         return;
     }
 
     if (pkt->cmd == MemCmd::CleanEvict || pkt->cmd == MemCmd::WritebackClean) {
         DPRINTF(MemoryAccess, "CleanEvict  on 0x%x: not responding\n",
-                pkt->getAddr());
-      return;
+            pkt->getAddr());
+        return;
     }
 
     assert(AddrRange(pkt->getAddr(),
-                     pkt->getAddr() + (pkt->getSize() - 1)).isSubset(range));
+        pkt->getAddr() + (pkt->getSize() - 1)).isSubset(range));
 
-    uint8_t *hostAddr = pmemAddr + pkt->getAddr() - range.start();
+    uint8_t* hostAddr = pmemAddr + pkt->getAddr() - range.start();
 
     if (pkt->cmd == MemCmd::SwapReq) {
         if (pkt->isAtomicOp()) {
@@ -342,13 +343,14 @@ AbstractMemory::access(PacketPtr pkt)
                 pkt->setData(hostAddr);
                 (*(pkt->getAtomicOp()))(hostAddr);
             }
-        } else {
+        }
+        else {
             std::vector<uint8_t> overwrite_val(pkt->getSize());
             uint64_t condition_val64;
             uint32_t condition_val32;
 
             panic_if(!pmemAddr, "Swap only works if there is real memory " \
-                     "(i.e. null=False)");
+                "(i.e. null=False)");
 
             bool overwrite_mem = true;
             // keep a copy of our possible write value, and copy what is at the
@@ -360,12 +362,14 @@ AbstractMemory::access(PacketPtr pkt)
                 if (pkt->getSize() == sizeof(uint64_t)) {
                     condition_val64 = pkt->req->getExtraData();
                     overwrite_mem = !std::memcmp(&condition_val64, hostAddr,
-                                                 sizeof(uint64_t));
-                } else if (pkt->getSize() == sizeof(uint32_t)) {
+                        sizeof(uint64_t));
+                }
+                else if (pkt->getSize() == sizeof(uint32_t)) {
                     condition_val32 = (uint32_t)pkt->req->getExtraData();
                     overwrite_mem = !std::memcmp(&condition_val32, hostAddr,
-                                                 sizeof(uint32_t));
-                } else
+                        sizeof(uint32_t));
+                }
+                else
                     panic("Invalid size for conditional read/write\n");
             }
 
@@ -376,7 +380,8 @@ AbstractMemory::access(PacketPtr pkt)
             TRACE_PACKET("Read/Write");
             numOther[pkt->req->masterId()]++;
         }
-    } else if (pkt->isRead()) {
+    }
+    else if (pkt->isRead()) {
         assert(!pkt->isWrite());
         if (pkt->isLLSC()) {
             assert(!pkt->fromCache());
@@ -392,25 +397,28 @@ AbstractMemory::access(PacketPtr pkt)
         bytesRead[pkt->req->masterId()] += pkt->getSize();
         if (pkt->req->isInstFetch())
             bytesInstRead[pkt->req->masterId()] += pkt->getSize();
-    } else if (pkt->isInvalidate() || pkt->isClean()) {
+    }
+    else if (pkt->isInvalidate() || pkt->isClean()) {
         assert(!pkt->isWrite());
         // in a fastmem system invalidating and/or cleaning packets
         // can be seen due to cache maintenance requests
 
         // no need to do anything
-    } else if (pkt->isWrite()) {
+    }
+    else if (pkt->isWrite()) {
         if (writeOK(pkt)) {
             if (pmemAddr) {
                 pkt->writeData(hostAddr);
                 DPRINTF(MemoryAccess, "%s wrote %i bytes to address %x\n",
-                        __func__, pkt->getSize(), pkt->getAddr());
+                    __func__, pkt->getSize(), pkt->getAddr());
             }
             assert(!pkt->req->isInstFetch());
             TRACE_PACKET("Write");
             numWrites[pkt->req->masterId()]++;
             bytesWritten[pkt->req->masterId()] += pkt->getSize();
         }
-    } else {
+    }
+    else {
         panic("Unexpected packet %s", pkt->print());
     }
 
@@ -420,12 +428,12 @@ AbstractMemory::access(PacketPtr pkt)
 }
 
 
-void 
-AbstractMemory::functionalData(Addr addr, int size, uint8_t * res){
-	
-	uint8_t *_addr = pmemAddr + addr - range.start();
-			
-	memcpy(&res, _addr, size);
+void
+AbstractMemory::functionalData(Addr addr, int size, uint8_t* res) {
+
+    uint8_t* _addr = pmemAddr + addr - range.start();
+
+    memcpy(&res, _addr, size);
 
 }
 void
@@ -434,72 +442,74 @@ AbstractMemory::functionalAccess(PacketPtr pkt)
 
 
 
-    if(pkt->isPIM()){
+    if (pkt->isPIM()) {
 
-	Packet::PIMSenderState* senderState = dynamic_cast<Packet::PIMSenderState*>(pkt->senderState);
-	assert(senderState);
+        Packet::PIMSenderState* senderState = dynamic_cast<Packet::PIMSenderState*>(pkt->senderState);
+        assert(senderState);
 
-	if(senderState->isRegistration()){
+        if (senderState->isRegistration()) {
 
-	    pendingPIMqueue.push_back(senderState);
+            pendingPIMqueue.push_back(senderState);
 
-	    DPRINTF(PIM, "Add PIM operations to the Queue [0x%lx] [0x%lx] -> [0x%lx]\n",senderState->addr[0],senderState->addr[1],senderState->addr[2]);
-	
-	    pkt->popLabel();
+            DPRINTF(PIM, "Add PIM operations to the Queue [0x%lx] [0x%lx] -> [0x%lx]\n", senderState->addr[0], senderState->addr[1], senderState->addr[2]);
 
-	    delete pkt;
-	}
-	if(senderState->isComplete()){
-	    DPRINTF(PIM, "Remove PIM operations from the Queue [0x%lx] [0x%lx] -> [0x%lx]\n",senderState->addr[0],senderState->addr[1],senderState->addr[2]);
-	    bool found=false;
-	    bool threadid=-1;
-	    std::vector<Packet::PIMSenderState *>::iterator index;
-	    for(auto i=pendingPIMqueue.begin();i!=pendingPIMqueue.end();i++){
-		if((*i)->addr[0]==senderState->addr[0]&&(*i)->addr[0]==senderState->addr[0]&&(*i)->addr[0]==senderState->addr[0]){
-		    found=true;
-		    index=i;
-		    threadid=(*i)->threadid;
-		    break;
-		}
-	    }
-	    assert(found&&threadid>=0);
+            pkt->popLabel();
 
-	    
-            BaseCPU* cpu=(BaseCPU*)SimObject::find("system.cpu");
-	    if(!cpu){
-		
-		cpu=(BaseCPU*)SimObject::find(("system.cpu"+to_string(threadid)).data());
-	    }
-	    assert(cpu);
-	    	
-    for(int i=0;i<cpu->pCaches.size();i++){
-	for(int j=0;j<3;j++){
-        if(cpu->pCaches[i]->check_addr((*index)->addr[j])){
-            cpu->pCaches[i]->flushPIM((*index)->addr[j]);
+            delete pkt;
         }
-	}
-    }
-	    if(this->cpu_type=="TimingSimpleCPU"){
-		TimingSimpleCPU* simplecpu=(TimingSimpleCPU*)cpu;
-	        simplecpu->activateContext((*(simplecpu->threadInfo[simplecpu->curThread])).thread->contextId());
-	    }else{
-		if(this->cpu_type=="DerivO3CPU"){
-		    cpu->activateContext(threadid);
-		}else{
-		    fatal("Base CPU cannot process PIM.");
-		}
-	    }
-	    pendingPIMqueue.erase(index);
-	}
-	
-	
-	return;
+        if (senderState->isComplete()) {
+            DPRINTF(PIM, "Remove PIM operations from the Queue [0x%lx] [0x%lx] -> [0x%lx]\n", senderState->addr[0], senderState->addr[1], senderState->addr[2]);
+            bool found = false;
+            bool threadid = -1;
+            std::vector<Packet::PIMSenderState*>::iterator index;
+            for (auto i = pendingPIMqueue.begin();i != pendingPIMqueue.end();i++) {
+                if ((*i)->addr[0] == senderState->addr[0] && (*i)->addr[0] == senderState->addr[0] && (*i)->addr[0] == senderState->addr[0]) {
+                    found = true;
+                    index = i;
+                    threadid = (*i)->threadid;
+                    break;
+                }
+            }
+            assert(found && threadid >= 0);
+
+
+            BaseCPU* cpu = (BaseCPU*)SimObject::find("system.cpu");
+            if (!cpu) {
+
+                cpu = (BaseCPU*)SimObject::find(("system.cpu" + to_string(threadid)).data());
+            }
+            assert(cpu);
+
+            for (int i = 0;i < cpu->pCaches.size();i++) {
+                for (int j = 0;j < 3;j++) {
+                    if (cpu->pCaches[i]->check_addr((*index)->addr[j])) {
+                        cpu->pCaches[i]->flushPIM((*index)->addr[j]);
+                    }
+                }
+            }
+            if (this->cpu_type == "TimingSimpleCPU") {
+                TimingSimpleCPU* simplecpu = (TimingSimpleCPU*)cpu;
+                simplecpu->activateContext((*(simplecpu->threadInfo[simplecpu->curThread])).thread->contextId());
+            }
+            else {
+                if (this->cpu_type == "DerivO3CPU") {
+                    cpu->activateContext(threadid);
+                }
+                else {
+                    fatal("Base CPU cannot process PIM.");
+                }
+            }
+            pendingPIMqueue.erase(index);
+        }
+
+
+        return;
     }
 
 
     assert(AddrRange(pkt->getAddr(),
-                     pkt->getAddr() + pkt->getSize() - 1).isSubset(range));
-    uint8_t *hostAddr = pmemAddr + pkt->getAddr() - range.start();
+        pkt->getAddr() + pkt->getSize() - 1).isSubset(range));
+    uint8_t* hostAddr = pmemAddr + pkt->getAddr() - range.start();
 
     if (pkt->isRead()) {
         if (pmemAddr) {
@@ -507,14 +517,16 @@ AbstractMemory::functionalAccess(PacketPtr pkt)
         }
         TRACE_PACKET("Read");
         pkt->makeResponse();
-    } else if (pkt->isWrite()) {
+    }
+    else if (pkt->isWrite()) {
         if (pmemAddr) {
             pkt->writeData(hostAddr);
         }
         TRACE_PACKET("Write");
         pkt->makeResponse();
-    } else if (pkt->isPrint()) {
-        Packet::PrintReqState *prs =
+    }
+    else if (pkt->isPrint()) {
+        Packet::PrintReqState* prs =
             dynamic_cast<Packet::PrintReqState*>(pkt->senderState);
         assert(prs);
         // Need to call printLabels() explicitly since we're not going
@@ -522,26 +534,27 @@ AbstractMemory::functionalAccess(PacketPtr pkt)
         prs->printLabels();
         // Right now we just print the single byte at the specified address.
         ccprintf(prs->os, "%s%#x\n", prs->curPrefix(), *hostAddr);
-    } else {
+    }
+    else {
         panic("AbstractMemory: unimplemented functional command %s",
-              pkt->cmdString());
+            pkt->cmdString());
     }
 }
 
 bool
-AbstractMemory::checkPIMReady(){
-	return (pendingPIMqueue.size()>0);
-
+AbstractMemory::checkPIMReady() {
+    return (pendingPIMqueue.size() > 0);
+ 
 }
 
 bool
-AbstractMemory::stalledAddr(PacketPtr pkt){
-	
-	for(auto i =pendingPIMqueue.begin();i!=pendingPIMqueue.end();i++){
-		for(int j=0;j<(*i)->addr.size();j++){
-			if((*i)->addr[j]/((uint64_t)coherence_granularity)==pkt->getAddr()/((uint64_t)coherence_granularity))
-				return true;
-		}
-	}
-	return false;
+AbstractMemory::stalledAddr(PacketPtr pkt) {
+
+    for (auto i = pendingPIMqueue.begin();i != pendingPIMqueue.end();i++) {
+        for (int j = 0;j < (*i)->addr.size();j++) {
+            if ((*i)->addr[j] / ((uint64_t)coherence_granularity) == pkt->getAddr() / ((uint64_t)coherence_granularity))
+                return true;
+        }
+    }
+    return false;
 }

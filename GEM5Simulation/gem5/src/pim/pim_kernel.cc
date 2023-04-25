@@ -13,82 +13,83 @@
 
 
 
-PIMKernel::PIMKernel(const Params *p):
-MemObject(p),
-port(this),
-mem_port(name() + ".mem_port", *this),
-status(Idle),
-parms(p),
-tickEvent([this]{ tick(); }, "PIMKernel tick",
-          false, Event::Default_Pri),
-computeEvent([this]{ trycompute(); }, "PIMKernel compute",
-          false, Event::Default_Pri),
-finishEvent([this]{ finish(); }, "PIMKernel finish data process",
-          false, Event::Default_Pri),
-_id(p->id),
-_latency(p->latency),
-_input(p->input),
-_output(p->output),
-pim_addr_base(p->addr_base),
-addrRanges(p->addr_ranges.begin(), p->addr_ranges.end())
+PIMKernel::PIMKernel(const Params* p):
+    MemObject(p),
+    port(this),
+    mem_port(name() + ".mem_port", *this),
+    status(Idle),
+    parms(p),
+    tickEvent([this] { tick(); }, "PIMKernel tick",
+        false, Event::Default_Pri),
+    computeEvent([this] { trycompute(); }, "PIMKernel compute",
+        false, Event::Default_Pri),
+    finishEvent([this] { finish(); }, "PIMKernel finish data process",
+        false, Event::Default_Pri),
+    _id(p->id),
+    _latency(p->latency),
+    _input(p->input),
+    _output(p->output),
+    pim_addr_base(p->addr_base),
+    addrRanges(p->addr_ranges.begin(), p->addr_ranges.end())
 {
-   std::cout<<p->addr_ranges.begin()->start();
-    for(int i=0;i<p->input+p->output;i++){
-        regs.push_back(make_pair<PIMKernel::dataType,DataStatus>(0,dataEmpty));
-	data.push_back(0);
+    std::cout << p->addr_ranges.begin()->start();
+    for (int i = 0;i < p->input + p->output;i++) {
+        regs.push_back(make_pair<PIMKernel::dataType, DataStatus>(0, dataEmpty));
+        data.push_back(0);
     }
-	DPRINTF(PIM, "Kernel: %d [0x%lx - 0x%lx]\n",_id,addrRanges.begin()->start(),addrRanges.end()->end());
+    DPRINTF(PIM, "Kernel: %d [0x%lx - 0x%lx]\n", _id, addrRanges.begin()->start(), addrRanges.end()->end());
 }
 
 void
-PIMKernel::trycompute(){
+PIMKernel::trycompute() {
 
     dataType res = doCompute();
-    int toProc=locateLatest();
-    DPRINTF(PIM, "Start processing data write of Reg[%d]\n",toProc);
+    int toProc = locateLatest();
+    DPRINTF(PIM, "Start processing data write of Reg[%d]\n", toProc);
     Request::Flags flags = 0;
-    RequestPtr req = make_shared<Request>(regs[toProc].first, 8, flags, 0 );
-    
-    PacketPtr pkt = new Packet(req, MemCmd::PIMWrite );
-    uint8_t* empty=new uint8_t[8];
+    RequestPtr req = make_shared<Request>(regs[toProc].first, 8, flags, 0);
 
-    memcpy(empty,&res,sizeof(dataType));
-    
+    PacketPtr pkt = new Packet(req, MemCmd::PIMWrite);
+    uint8_t* empty = new uint8_t[8];
+
+    memcpy(empty, &res, sizeof(dataType));
+
     pkt->dataDynamic(empty);
-    
-    Packet::PIMSenderState* senderState=new Packet::PIMSenderState(_id,toProc);
+
+    Packet::PIMSenderState* senderState = new Packet::PIMSenderState(_id, toProc);
     pkt->pushSenderState(senderState);
-    
-    DPRINTF(PIM, "Try to send write req [0x%llx]-[%d]\n",regs[toProc].first,toProc);
-    
-    if(port.sendTimingReq(pkt)){
-        
-        status=WaitingResp;
-        
-        DPRINTF(PIM, "Writen to the memory [0x%llx]-[%d] [%d]\n",regs[toProc].first,toProc,status);
-        
-        regs[toProc].second=dataWaitingResp;
-        req=nullptr;
+
+    DPRINTF(PIM, "Try to send write req [0x%llx]-[%d]\n", regs[toProc].first, toProc);
+
+    if (port.sendTimingReq(pkt)) {
+
+        status = WaitingResp;
+
+        DPRINTF(PIM, "Writen to the memory [0x%llx]-[%d] [%d]\n", regs[toProc].first, toProc, status);
+
+        regs[toProc].second = dataWaitingResp;
+        req = nullptr;
         write_packets++;
-        
-    }else{
-        DPRINTF(PIM, "Failed sending write to the memory [%d]\n",toProc);
-        retry_pkt=pkt;
+
+    }
+    else {
+        DPRINTF(PIM, "Failed sending write to the memory [%d]\n", toProc);
+        retry_pkt = pkt;
         status = SendRetry;
         write_retry++;
-	
-        if(!computeEvent.scheduled()){
 
-		schedule(computeEvent,clockEdge((Cycles)1));	
-		
-	}
+        if (!computeEvent.scheduled()) {
+
+            schedule(computeEvent, clockEdge((Cycles)1));
+
+        }
     }
 
 
 }
 
-BaseMasterPort &
-PIMKernel::getMasterPort(const std::string &if_name, PortID idx) 
+BaseMasterPort&
+PIMKernel::getMasterPort(const std::string& if_name, PortID idx)
 {
     return port;
 }
@@ -108,9 +109,9 @@ PIMKernel::init()
 
 
 BaseSlavePort&
-PIMKernel::getSlavePort(const string &if_name, PortID idx)
+PIMKernel::getSlavePort(const string& if_name, PortID idx)
 {
-    return mem_port;   
+    return mem_port;
 }
 
 
@@ -141,46 +142,47 @@ PIMKernel::recvFunctional(PacketPtr pkt)
     recv_pim_commands++;
     // receive pim commands from the host
     Packet::PIMSenderState* senderState = dynamic_cast<Packet::PIMSenderState*>(pkt->senderState);
-    Packet::PIMSenderState* data=new Packet::PIMSenderState(_id,-1);
-    for(int i=0;i<senderState->addr.size();i++){
-	data->addr.push_back(senderState->addr[i]);
+    Packet::PIMSenderState* data = new Packet::PIMSenderState(_id, -1);
+    for (int i = 0;i < senderState->addr.size();i++) {
+        data->addr.push_back(senderState->addr[i]);
     }
 
     data->setCommand(Packet::PIMSenderState::Command::Registration);
     Request::Flags flags = 0;
-    uint8_t size = 1; 
-    RequestPtr req = std::make_shared<Request>(pim_addr_base-1, size, flags, 0 ); 
+    uint8_t size = 1;
+    RequestPtr req = std::make_shared<Request>(pim_addr_base - 1, size, flags, 0);
     PacketPtr _pkt = new Packet(req, MemCmd::PIM);
 
-		
+
     uint8_t* empty = new uint8_t[size];
     _pkt->dataDynamic(empty);
-                
+
     _pkt->pushSenderState(data);
-    
+
     // send pim addresses to the memory to block other memory accesses to the same region
     port.sendFunctional(_pkt);
     sent_pim_commands++;
 
-    if(!isActive()||canModify()){
-	// if a kernel is off or idle, the kernel can be used for computing
-	exec_pim_commands++;
-	start(pkt);
-	return;	
-    }else{	
-	failed_pim_commands++;
+    if (!isActive() || canModify()) {
+        // if a kernel is off or idle, the kernel can be used for computing
+        exec_pim_commands++;
+        start(pkt);
+        return;
+    }
+    else {
+        failed_pim_commands++;
     }
 }
 
 PIMKernel::RecvPIMPort::RecvPIMPort(const std::string& name, PIMKernel& _kernel)
     : QueuedSlavePort(name, &_kernel, queue), queue(_kernel, *this),
-      kernel(_kernel)
+    kernel(_kernel)
 { }
 
 AddrRangeList
 PIMKernel::RecvPIMPort::getAddrRanges() const
 {
-    
+
     return kernel.addrRanges;
 }
 
@@ -218,26 +220,28 @@ PIMKernel::recvReqRetry()
 {
 
     retry_cycle++;
-    assert(status==SendRetry&&retry_pkt!=nullptr);
+    assert(status == SendRetry && retry_pkt != nullptr);
     Packet::PIMSenderState* senderState = dynamic_cast<Packet::PIMSenderState*>(retry_pkt->senderState);
     assert(senderState);
     bool ifread = readReg(senderState->procid);
-    if(port.sendTimingReq(retry_pkt)){
-	status=WaitingResp;
-	DPRINTF(PIM, "Retry to Memory [0x%llx]-[%d]\n",regs[senderState->procid].first,senderState->procid);
-						
-	regs[senderState->procid].second=dataWaitingResp;
-	if(retry_pkt->isRead()){
-	    read_retry++;
-	}else{
-	    write_retry++;
-	}							
-    }else{
-	retry_failed++;
-	DPRINTF(PIM, "Failed Retry to Memory %d\n",senderState->procid);
+    if (port.sendTimingReq(retry_pkt)) {
+        status = WaitingResp;
+        DPRINTF(PIM, "Retry to Memory [0x%llx]-[%d]\n", regs[senderState->procid].first, senderState->procid);
+
+        regs[senderState->procid].second = dataWaitingResp;
+        if (retry_pkt->isRead()) {
+            read_retry++;
+        }
+        else {
+            write_retry++;
+        }
+    }
+    else {
+        retry_failed++;
+        DPRINTF(PIM, "Failed Retry to Memory %d\n", senderState->procid);
 
     }
-    if(needSchedule()&&!tickEvent.scheduled()&&!finishEvent.scheduled())
+    if (needSchedule() && !tickEvent.scheduled() && !finishEvent.scheduled())
         schedule(tickEvent, clockEdge((Cycles)1));
 }
 
@@ -259,11 +263,11 @@ PIMKernel::TimingPIMPort::TickEvent::schedule(PacketPtr _pkt, Tick t)
 bool
 PIMKernel::recvTimingResp(PacketPtr pkt)
 {
-    bool res = doDataCallback(pkt,curTick());
-    if(!tickEvent.scheduled())
-    // delay processing of returned data until next CPU clock edge
-    schedule(tickEvent, clockEdge(Cycles(1)));
-    
+    bool res = doDataCallback(pkt, curTick());
+    if (!tickEvent.scheduled())
+        // delay processing of returned data until next CPU clock edge
+        schedule(tickEvent, clockEdge(Cycles(1)));
+
     return res;
 
 }
@@ -276,20 +280,20 @@ PIMKernel::recvTimingSnoopReq(PacketPtr pkt)
 
 
 Tick
-PIMKernel::recvAtomic(PacketPtr pkt){
+PIMKernel::recvAtomic(PacketPtr pkt) {
     fatal("PIM kernel should not get atomic operations");
     return 0;
 }
 
 
 void
-PIMKernel::functionalAccess(PacketPtr pkt){
+PIMKernel::functionalAccess(PacketPtr pkt) {
     warn("functionalAccess is not working in PIM kernel");
 }
 
-PIMKernel::~PIMKernel(){}
+PIMKernel::~PIMKernel() {}
 
-PIMKernel *
+PIMKernel*
 PIMKernelParams::create()
 {
     return new PIMKernel(this);
@@ -301,8 +305,8 @@ PIMKernel::getReadyStatus()
 {
     // check the kernel has processed all required data
     // sanity check of registers
-    assert(regs.size()>0);
-    return inputReady()&&outputReady();
+    assert(regs.size() > 0);
+    return inputReady() && outputReady();
 
 }
 
@@ -310,9 +314,9 @@ bool
 PIMKernel::inputReady()
 {
     //sanity check of the registers
-    assert(_input>=0);
-    for(int i=0;i<_input;i++){
-        if(regs[i].second!=dataFinish){
+    assert(_input >= 0);
+    for (int i = 0;i < _input;i++) {
+        if (regs[i].second != dataFinish) {
             return false;
         }
     }
@@ -320,11 +324,11 @@ PIMKernel::inputReady()
 }
 
 bool
-PIMKernel::outputReady(){
+PIMKernel::outputReady() {
     //sanity check of the registers
-    assert(_output>=0);
-    for(int i=0;i<_input+_output;i++){
-        if(regs[i].second!=dataFinish){
+    assert(_output >= 0);
+    for (int i = 0;i < _input + _output;i++) {
+        if (regs[i].second != dataFinish) {
             return false;
         }
     }
@@ -338,263 +342,265 @@ PIMKernel::tick()
     // tick() should work when the kernel is active
     assert(isActive());
     active_cycle++;
-    switch(status){
-	case Status::SendRetry :
+    switch (status) {
+    case Status::SendRetry:
 
-	    DPRINTF(PIM, "Resend memory access packet\n");
-	    break;
+        DPRINTF(PIM, "Resend memory access packet\n");
+        break;
 
-	case Status::Ready :
-	case Status::WaitingResp : 
-	{
-	    if(recPackets.size() == _input + _output - 1){
-		for(int i=0;i>regs.size();i++){
-		    regs[i].second=dataFinish;
-		}
-		while(recPackets.size()>0){
-		    auto f=recPackets.begin();
-		    delete(*f);
-		    recPackets.erase(recPackets.begin());
-		}	
-	    }
+    case Status::Ready:
+    case Status::WaitingResp:
+    {
+        if (recPackets.size() == _input + _output - 1) {
+            for (int i = 0;i > regs.size();i++) {
+                regs[i].second = dataFinish;
+            }
+            while (recPackets.size() > 0) {
+                auto f = recPackets.begin();
+                delete(*f);
+                recPackets.erase(recPackets.begin());
+            }
+        }
 
-	    int toProc=0;
-			
-	    while((toProc=locateLatest())<_input){
+        int toProc = 0;
 
-		DPRINTF(PIM, "Start processing data read of Reg[%d]\n",toProc);
+        while ((toProc = locateLatest()) < _input) {
 
-		Request::Flags flags = 0;
-                RequestPtr req = make_shared<Request>(regs[toProc].first, 8, flags, 0 ); 
-                PacketPtr pkt = new Packet(req, MemCmd::PIMRead );
-                uint8_t* empty = new uint8_t[8];
-                pkt->dataDynamic(empty);
+            DPRINTF(PIM, "Start processing data read of Reg[%d]\n", toProc);
 
-		Packet::PIMSenderState* senderState=new Packet::PIMSenderState(_id,toProc);
-		pkt->pushSenderState(senderState);
-		
-		DPRINTF(PIM, "Try to send read req [0x%llx] - ID[%d]\n",regs[toProc].first,toProc);
-							
-		if(port.sendTimingReq(pkt)){
-		    read_packets++;
-		    status=WaitingResp;
-		    DPRINTF(PIM, "Sent read to the memory [0x%llx] - [%d]\n",regs[toProc].first,toProc);
-						
-		    regs[toProc].second=dataWaitingResp;
-		    req=nullptr;
-	            break;
-		}else{
-		    DPRINTF(PIM, "Failed sending read to the memory %d\n",toProc);
-	 	    retry_pkt=pkt;
-		    status = SendRetry;
-		    read_retry++;					
-		    break;
-		}
-						
-		req=nullptr;
-					
-	    }
-	    if(toProc>=_input&&toProc<_input+_output&&inputReady()){
-		if(!computeEvent.scheduled()){
+            Request::Flags flags = 0;
+            RequestPtr req = make_shared<Request>(regs[toProc].first, 8, flags, 0);
+            PacketPtr pkt = new Packet(req, MemCmd::PIMRead);
+            uint8_t* empty = new uint8_t[8];
+            pkt->dataDynamic(empty);
 
-			schedule(computeEvent,clockEdge((Cycles)_latency));	
-		
-		}
-		
-	    }else{
-		if(inputReady()&&outputReady()){
-		    status=Finish;
-		    DPRINTF(PIM, "Finished PIM oprations\n");
-		}
-	    }
-	}
-	break;
+            Packet::PIMSenderState* senderState = new Packet::PIMSenderState(_id, toProc);
+            pkt->pushSenderState(senderState);
 
-	case Status::Idle :  
-	case Status::Finish :  
-	{
-	    DPRINTF(PIM, "Finished PIM oprations\n");
-	    assert(!finishEvent.scheduled());
-	    schedule(finishEvent,clockEdge((Cycles)1));
-				
-	}	
-	    break;
+            DPRINTF(PIM, "Try to send read req [0x%llx] - ID[%d]\n", regs[toProc].first, toProc);
 
-	case Status::Poweroff :  //doing nothing
-	default:
-	    break;
+            if (port.sendTimingReq(pkt)) {
+                read_packets++;
+                status = WaitingResp;
+                DPRINTF(PIM, "Sent read to the memory [0x%llx] - [%d]\n", regs[toProc].first, toProc);
 
-	}
+                regs[toProc].second = dataWaitingResp;
+                req = nullptr;
+                break;
+            }
+            else {
+                DPRINTF(PIM, "Failed sending read to the memory %d\n", toProc);
+                retry_pkt = pkt;
+                status = SendRetry;
+                read_retry++;
+                break;
+            }
 
-    if(needSchedule()&&!tickEvent.scheduled()&&!finishEvent.scheduled()){
+            req = nullptr;
+
+        }
+        if (toProc >= _input && toProc < _input + _output && inputReady()) {
+            if (!computeEvent.scheduled()) {
+
+                schedule(computeEvent, clockEdge((Cycles)_latency));
+
+            }
+
+        }        
+else {
+            if (inputReady() && outputReady()) {
+                status = Finish;
+                DPRINTF(PIM, "Finished PIM oprations\n");
+            }
+        }
+    }
+    break;
+
+    case Status::Idle:
+    case Status::Finish:
+    {
+        DPRINTF(PIM, "Finished PIM oprations\n");
+        assert(!finishEvent.scheduled());
+        schedule(finishEvent, clockEdge((Cycles)1));
+
+    }
+    break;
+
+    case Status::Poweroff:  //doing nothing
+    default:
+        break;
+
+    }
+
+    if (needSchedule() && !tickEvent.scheduled() && !finishEvent.scheduled()) {
         schedule(tickEvent, clockEdge((Cycles)1));
     }
-	 
+
 }
 
 bool
-PIMKernel::start(PacketPtr pkt){
+PIMKernel::start(PacketPtr pkt) {
     Packet::PIMSenderState* senderState = dynamic_cast<Packet::PIMSenderState*>(pkt->senderState);
     assert(senderState);
-    for(int i=0;i<senderState->addr.size();i++){
-        regs[i].first=senderState->addr[i];
-	DPRINTF(PIM, "Store Reg[%d] [0x%llx]\n",i,senderState->addr[i]);
-        regs[i].second=dataReady;
+    for (int i = 0;i < senderState->addr.size();i++) {
+        regs[i].first = senderState->addr[i];
+        DPRINTF(PIM, "Store Reg[%d] [0x%llx]\n", i, senderState->addr[i]);
+        regs[i].second = dataReady;
 
     }
-    tickid=senderState->cycle;
+    tickid = senderState->cycle;
     active();
     return true;
 }
 
 void
-PIMKernel::active(){
-	status=Ready;
-	tick();
+PIMKernel::active() {
+    status = Ready;
+    tick();
 
 }
 
 bool
-PIMKernel::canModify(){
-	return status==Idle;
+PIMKernel::canModify() {
+    return status == Idle;
 
 }
 
 
 bool
-PIMKernel::powerOff(){
-	if(status==Idle||status==Poweroff){
-		status=Poweroff;
-		return true;
-  	}
-	return false;
+PIMKernel::powerOff() {
+    if (status == Idle || status == Poweroff) {
+        status = Poweroff;
+        return true;
+    }
+    return false;
 }
 
 bool
-PIMKernel::isActive(){
-	return status!=Poweroff;
+PIMKernel::isActive() {
+    return status != Poweroff;
 }
 
 
 bool
-PIMKernel::needSchedule(){
-	
-	if(status==Idle||status==Poweroff||status==SendRetry)
-		return false;
-	return true;
+PIMKernel::needSchedule() {
+
+    if (status == Idle || status == Poweroff || status == SendRetry)
+        return false;
+    return true;
 }
 
 
 int
-PIMKernel::locateLatest(){
-	assert(isActive());
-	for(int i=0;i<_input+_output;i++){
-		if(regs[i].second==dataReady)
-			return i;
-	}
+PIMKernel::locateLatest() {
+    assert(isActive());
+    for (int i = 0;i < _input + _output;i++) {
+        if (regs[i].second == dataReady)
+            return i;
+    }
 
-	return _input+_output;
+    return _input + _output;
 
 }
 
 bool
-PIMKernel::readReg(int index){
-	assert(index>=0&&index<_input+_output);
-	if(index<_input)
-		return true;
-	else 
-		return false;
+PIMKernel::readReg(int index) {
+    assert(index >= 0 && index < _input + _output);
+    if (index < _input)
+        return true;
+    else
+        return false;
 }
 
 // process when receiving data callback from the memory
 bool
-PIMKernel::doDataCallback(PacketPtr pkt, Tick response_time){
+PIMKernel::doDataCallback(PacketPtr pkt, Tick response_time) {
 
     Packet::PIMSenderState* senderState = dynamic_cast<Packet::PIMSenderState*>(pkt->senderState);
     assert(senderState);
-    int i=senderState->procid;
-    assert(i<_output+_input);
-    data[i]=*pkt->getPtr<uint64_t>();
-	
-    regs[i].second=dataFinish;
-    if(getReadyStatus()){
-	status=Finish;
+    int i = senderState->procid;
+    assert(i < _output + _input);
+    data[i] = *pkt->getPtr<uint64_t>();
+
+    regs[i].second = dataFinish;
+    if (getReadyStatus()) {
+        status = Finish;
     }
-    DPRINTF(PIM, "Receive [0x%llx] [%d]- %llu [%d] : status [%d]\n", pkt->getAddr(), i,data[i],regs[i].second,status);
+    DPRINTF(PIM, "Receive [0x%llx] [%d]- %llu [%d] : status [%d]\n", pkt->getAddr(), i, data[i], regs[i].second, status);
     recPackets.push_back(pkt);
     return true;
 }
 
 // send pim finish command to the memory to remove pending address
 void
-PIMKernel::finish(){
+PIMKernel::finish() {
     assert(!tickEvent.scheduled());
 
-    Packet::PIMSenderState* data=new Packet::PIMSenderState(regs[0].first,regs[1].first,regs[2].first,_id);
+    Packet::PIMSenderState* data = new Packet::PIMSenderState(regs[0].first, regs[1].first, regs[2].first, _id);
     data->setCommand(Packet::PIMSenderState::Command::Complete);
     Request::Flags flags = 0;
-    uint8_t size =1; 
-    RequestPtr req = std::make_shared<Request>(pim_addr_base-1, size, flags, 0 ); 
+    uint8_t size = 1;
+    RequestPtr req = std::make_shared<Request>(pim_addr_base - 1, size, flags, 0);
     PacketPtr _pkt = new Packet(req, MemCmd::PIM);
     uint8_t* empty = new uint8_t[size];
-    _pkt->dataDynamic(empty);           
+    _pkt->dataDynamic(empty);
     _pkt->pushSenderState(data);
     port.sendFunctional(_pkt);
-	
-    status=Idle;
+
+    status = Idle;
 }
 
 void
-PIMKernel::regStats(){
+PIMKernel::regStats() {
 
     MemObject::regStats();
     using namespace Stats;
 
     recv_pim_commands
-	.name(name() + ".recv_pim_commands")
-	.desc("The PIM command received from the host-side processor");
+        .name(name() + ".recv_pim_commands")
+        .desc("The PIM command received from the host-side processor");
 
     computing_counts
-	.name(name() + ".computing_counts")
-	.desc("the counts of the computing progress");
+        .name(name() + ".computing_counts")
+        .desc("the counts of the computing progress");
 
     sent_pim_commands
-	.name(name() + ".sent_pim_commands")
-	.desc("the control commands sent by pim kernel");
-   
+        .name(name() + ".sent_pim_commands")
+        .desc("the control commands sent by pim kernel");
+
     read_packets
-	.name(name() + ".read_packets")
-	.desc("the amount of pim kernel read");
+        .name(name() + ".read_packets")
+        .desc("the amount of pim kernel read");
 
     write_packets
-	.name(name() + ".write_packets")
-	.desc("the amount of pim kernel write");
+        .name(name() + ".write_packets")
+        .desc("the amount of pim kernel write");
 
     read_retry
-	.name(name() + ".read_retry")
-	.desc("the amount of pim kernel read retry");
+        .name(name() + ".read_retry")
+        .desc("the amount of pim kernel read retry");
 
     write_retry
-	.name(name() + ".write_retry")
-	.desc("the amount of pim kernel write retry");
+        .name(name() + ".write_retry")
+        .desc("the amount of pim kernel write retry");
 
     retry_failed
-	.name(name() + ".retry_failed")
-	.desc("the amount of failed pim kernel requests");
+        .name(name() + ".retry_failed")
+        .desc("the amount of failed pim kernel requests");
 
     active_cycle
-	.name(name() + ".active_cycle")
-	.desc("the active cycles of the kernel");
+        .name(name() + ".active_cycle")
+        .desc("the active cycles of the kernel");
 
     retry_cycle
-	.name(name() + ".retry_cycle")
-	.desc("the retry cycles of the kernel");
+        .name(name() + ".retry_cycle")
+        .desc("the retry cycles of the kernel");
 }
 
 PIMKernel::dataType
-PIMKernel::doCompute(){
-	warn("basic PIM kernel has no computing progress.");
-	computing_counts++;
-	return (dataType)0;
+PIMKernel::doCompute() {
+    warn("basic PIM kernel has no computing progress.");
+    computing_counts++;
+    return (dataType)0;
 }
 

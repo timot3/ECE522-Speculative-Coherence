@@ -123,7 +123,7 @@ class System(MemObject):
 
     # @PIM
     # define PIM systems
-    pim_kernerls = VectorParam.PIMKernel([],"PIM kernels")
+    pim_kernels = VectorParam.PIMKernel([],"PIM kernels")
     pim_type = Param.String("default", "used to determine if a PIM operation is suitable for execution")
 
     if buildEnv['USE_KVM']:
